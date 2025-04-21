@@ -184,8 +184,8 @@ def search_fashion_trends(api_key, num_results=30):
         "q": "fashion trends 2025",
         "api_key": api_key,
         "engine": "google",
-        "gl": "us",
-        "hl": "en",
+        "gl": "br",
+        "hl": "pt-br",
         "num": num_results
     }
     
@@ -431,4 +431,4 @@ if __name__ == "__main__":
     
     # Opção 2: Executar em intervalos regulares (a cada 24 horas)
     # Descomente a linha abaixo para ativar o agendamento
-    # schedule_fashion_research(API_KEY, mysql_config, interval_hours=24)
+    #schedule_fashion_research(API_KEY, mysql_config, interval_hours=24)
