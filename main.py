@@ -2,8 +2,168 @@ import requests
 import csv
 import os
 import re
+import mysql.connector
 from datetime import datetime
 from collections import Counter
+
+# Função para conectar ao MySQL
+def connect_to_mysql(host, user, password, database):
+    """
+    Estabelece conexão com o banco de dados MySQL
+    
+    Args:
+        host (str): Host do servidor MySQL
+        user (str): Nome de usuário
+        password (str): Senha de acesso
+        database (str): Nome do banco de dados
+        
+    Returns:
+        mysql.connector.connection.MySQLConnection: Objeto de conexão MySQL
+    """
+    try:
+        connection = mysql.connector.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=database
+        )
+        print("Conexão com MySQL estabelecida com sucesso!")
+        return connection
+    except mysql.connector.Error as err:
+        print(f"Erro de conexão com MySQL: {err}")
+        return None
+
+# Função para criar as tabelas no MySQL se não existirem
+def create_mysql_tables(connection):
+    """
+    Cria as tabelas necessárias no banco de dados MySQL
+    
+    Args:
+        connection: Objeto de conexão MySQL
+        
+    Returns:
+        bool: True se as tabelas foram criadas com sucesso, False caso contrário
+    """
+    try:
+        cursor = connection.cursor()
+        
+        # Tabela para tendências
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS fashion_trends (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(255),
+            link TEXT,
+            snippet TEXT,
+            source_date VARCHAR(255),
+            source VARCHAR(255),
+            collection_date DATETIME
+        )
+        """)
+        
+        # Tabela para palavras-chave
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS fashion_keywords (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            keyword VARCHAR(255),
+            count INT,
+            ranking INT,
+            collection_date DATETIME
+        )
+        """)
+        
+        connection.commit()
+        print("Tabelas criadas/verificadas com sucesso!")
+        return True
+    
+    except mysql.connector.Error as err:
+        print(f"Erro ao criar tabelas: {err}")
+        return False
+
+# Função para inserir tendências no MySQL
+def insert_fashion_trends(connection, trend_data):
+    """
+    Insere dados de tendências de moda no MySQL
+    
+    Args:
+        connection: Objeto de conexão MySQL
+        trend_data (list): Lista de dicionários com os dados das tendências
+        
+    Returns:
+        int: Número de registros inseridos
+    """
+    try:
+        cursor = connection.cursor()
+        
+        query = """
+        INSERT INTO fashion_trends 
+        (title, link, snippet, source_date, source, collection_date) 
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """
+        
+        collection_date = datetime.now()
+        count = 0
+        
+        for trend in trend_data:
+            # Extrair os dados do dicionário
+            title = trend.get("título", "")
+            link = trend.get("link", "")
+            snippet = trend.get("snippet", "")
+            source_date = trend.get("data", "")
+            source = trend.get("fonte", "")
+            
+            # Inserir no banco de dados
+            cursor.execute(query, (title, link, snippet, source_date, source, collection_date))
+            count += 1
+        
+        connection.commit()
+        print(f"{count} tendências inseridas no MySQL com sucesso!")
+        return count
+    
+    except mysql.connector.Error as err:
+        print(f"Erro ao inserir tendências no MySQL: {err}")
+        return 0
+
+# Função para inserir palavras-chave no MySQL
+def insert_fashion_keywords(connection, top_keywords):
+    """
+    Insere dados de palavras-chave de moda no MySQL
+    
+    Args:
+        connection: Objeto de conexão MySQL
+        top_keywords (list): Lista de dicionários com as palavras-chave mais populares
+        
+    Returns:
+        int: Número de registros inseridos
+    """
+    try:
+        cursor = connection.cursor()
+        
+        query = """
+        INSERT INTO fashion_keywords 
+        (keyword, count, ranking, collection_date) 
+        VALUES (%s, %s, %s, %s)
+        """
+        
+        collection_date = datetime.now()
+        count = 0
+        
+        for i, keyword_data in enumerate(top_keywords):
+            # Extrair os dados do dicionário
+            keyword = keyword_data.get("palavra", "")
+            keyword_count = keyword_data.get("contagem", 0)
+            ranking = i + 1
+            
+            # Inserir no banco de dados
+            cursor.execute(query, (keyword, keyword_count, ranking, collection_date))
+            count += 1
+        
+        connection.commit()
+        print(f"{count} palavras-chave inseridas no MySQL com sucesso!")
+        return count
+    
+    except mysql.connector.Error as err:
+        print(f"Erro ao inserir palavras-chave no MySQL: {err}")
+        return 0
 
 # Funções existentes mantidas do seu código original
 def search_fashion_trends(api_key, num_results=30):
@@ -147,385 +307,128 @@ def get_top_fashion_keywords(api_key, num_keywords=10):
     
     return top_keywords
 
-# Novas funções para integração com Power BI
-
-def create_powerbi_friendly_csv(trend_data, top_keywords, output_dir=None):
+# Nova função principal com integração MySQL
+def run_fashion_research_with_mysql(api_key, mysql_config, num_results=30, num_keywords=10):
     """
-    Cria arquivos CSV formatados para serem facilmente importados pelo Power BI
-    
-    Args:
-        trend_data (list): Lista de dicionários com os dados das tendências
-        top_keywords (list): Lista de dicionários com as palavras-chave mais populares
-        output_dir (str, optional): Diretório de saída para os arquivos
-        
-    Returns:
-        tuple: Caminhos dos arquivos salvos (trends_file, keywords_file)
-    """
-    if output_dir is None:
-        output_dir = "powerbi_data"
-    
-    # Criar diretório se não existir
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    current_date = datetime.now().strftime("%Y%m%d")
-    
-    # Arquivo para tendências
-    trends_file = os.path.join(output_dir, f"fashion_trends_{current_date}.csv")
-    
-    # Arquivo para palavras-chave
-    keywords_file = os.path.join(output_dir, f"fashion_keywords_{current_date}.csv")
-    
-    # Salvar dados de tendências em formato adequado para Power BI
-    if trend_data:
-        # Adicionar uma coluna com ID e data de coleta para melhorar a análise no Power BI
-        for i, item in enumerate(trend_data):
-            item["id"] = i + 1
-            item["data_coleta"] = datetime.now().strftime("%Y-%m-%d")
-        
-        headers = trend_data[0].keys()
-        
-        print(f"Salvando {len(trend_data)} resultados de tendências para Power BI em {trends_file}...")
-        
-        with open(trends_file, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=headers)
-            writer.writeheader()
-            writer.writerows(trend_data)
-    
-    # Salvar dados de palavras-chave em formato adequado para Power BI
-    if top_keywords:
-        # Adicionar data de coleta e ID para melhorar a análise no Power BI
-        for i, item in enumerate(top_keywords):
-            item["id"] = i + 1
-            item["data_coleta"] = datetime.now().strftime("%Y-%m-%d")
-            item["ranking"] = i + 1  # Adicionar posição no ranking
-        
-        print(f"Salvando {len(top_keywords)} palavras-chave para Power BI em {keywords_file}...")
-        
-        with open(keywords_file, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=["id", "palavra", "contagem", "ranking", "data_coleta"])
-            writer.writeheader()
-            writer.writerows(top_keywords)
-    
-    return trends_file, keywords_file
-
-def create_relationships_file(output_dir=None):
-    """
-    Cria um arquivo CSV com informações sobre os relacionamentos entre as tabelas
-    para facilitar a modelagem de dados no Power BI
-    
-    Args:
-        output_dir (str, optional): Diretório de saída para os arquivos
-        
-    Returns:
-        str: Caminho do arquivo de relacionamentos
-    """
-    if output_dir is None:
-        output_dir = "powerbi_data"
-    
-    # Criar diretório se não existir
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    rel_file = os.path.join(output_dir, "relationships_info.csv")
-    
-    relationships = [
-        {"from_table": "fashion_trends", "from_column": "data_coleta", "to_table": "fashion_keywords", "to_column": "data_coleta", "relationship": "many_to_many"}
-    ]
-    
-    print(f"Criando arquivo de informações de relacionamento em {rel_file}...")
-    
-    with open(rel_file, 'w', newline='', encoding='utf-8') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=["from_table", "from_column", "to_table", "to_column", "relationship"])
-        writer.writeheader()
-        writer.writerows(relationships)
-    
-    return rel_file
-
-def create_powerbi_metadata(output_dir=None):
-    """
-    Cria um arquivo de metadados com informações úteis para configurar o Power BI
-    
-    Args:
-        output_dir (str, optional): Diretório de saída para os arquivos
-        
-    Returns:
-        str: Caminho do arquivo de metadados
-    """
-    if output_dir is None:
-        output_dir = "powerbi_data"
-    
-    # Criar diretório se não existir
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    metadata_file = os.path.join(output_dir, "metadata.txt")
-    
-    metadata_content = """# Metadados para importação no Power BI
-
-## Estrutura das tabelas
-
-### Tabela: fashion_trends
-- id: Identificador único da tendência
-- título: Título da tendência encontrada
-- link: URL da fonte
-- snippet: Trecho de texto descritivo
-- data: Data da tendência (se disponível)
-- fonte: Fonte da informação (apenas para resultados de notícias)
-- data_coleta: Data em que os dados foram coletados
-
-### Tabela: fashion_keywords
-- id: Identificador único da palavra-chave
-- palavra: A palavra-chave de moda
-- contagem: Número de vezes que a palavra apareceu nas sugestões de pesquisa
-- ranking: Posição no ranking de popularidade
-- data_coleta: Data em que os dados foram coletados
-
-## Sugestões de visualizações
-
-1. Nuvem de palavras com as palavras-chave mais populares
-2. Gráfico de barras mostrando as contagens das top 10 palavras-chave
-3. Linha do tempo com as tendências organizadas por data
-4. Mapa de calor relacionando palavras-chave e temas das tendências
-5. Cartões com métricas principais (número de tendências, palavra-chave mais comum)
-
-## Atualização dos dados
-
-- Os dados são baseados em pesquisas realizadas através da SerpAPI
-- Atualize regularmente para acompanhar mudanças nas tendências
-- A coluna data_coleta permite acompanhar a evolução das tendências ao longo do tempo
-"""
-    
-    print(f"Criando arquivo de metadados em {metadata_file}...")
-    
-    with open(metadata_file, 'w', encoding='utf-8') as f:
-        f.write(metadata_content)
-    
-    return metadata_file
-
-def prepare_data_for_powerbi(api_key, output_dir=None, num_results=30, num_keywords=10):
-    """
-    Função principal para preparar todos os dados para o Power BI
+    Função principal que executa a pesquisa de moda e armazena os resultados no MySQL
     
     Args:
         api_key (str): Sua chave de API da SerpAPI
-        output_dir (str, optional): Diretório de saída para os arquivos
+        mysql_config (dict): Configurações de conexão com o MySQL
         num_results (int): Número de resultados de tendências desejados
         num_keywords (int): Número de palavras-chave a retornar
         
     Returns:
-        tuple: Diretório de saída e lista de arquivos criados
+        tuple: (trends_count, keywords_count) - Contador de registros inseridos
     """
-    if output_dir is None:
-        output_dir = "powerbi_data"
-    
     try:
+        # Conectar ao MySQL
+        connection = connect_to_mysql(
+            mysql_config['host'],
+            mysql_config['user'],
+            mysql_config['password'],
+            mysql_config['database']
+        )
+        
+        if not connection:
+            print("Não foi possível conectar ao MySQL. Encerrando.")
+            return 0, 0
+        
+        # Criar as tabelas se não existirem
+        if not create_mysql_tables(connection):
+            print("Erro ao criar tabelas. Encerrando.")
+            connection.close()
+            return 0, 0
+        
         # Obter dados de tendências
         trend_data = search_fashion_trends(api_key, num_results)
         
         # Obter top palavras-chave
         top_keywords = get_top_fashion_keywords(api_key, num_keywords)
         
-        if not trend_data and not top_keywords:
-            print("Não foi possível obter dados sobre moda")
-            return None, []
+        trends_count = 0
+        keywords_count = 0
         
-        # Lista para armazenar caminhos de todos os arquivos criados
-        all_files = []
+        # Inserir dados no MySQL
+        if trend_data:
+            trends_count = insert_fashion_trends(connection, trend_data)
         
-        # Criar arquivos CSV amigáveis para Power BI
-        trends_file, keywords_file = create_powerbi_friendly_csv(trend_data, top_keywords, output_dir)
-        if trends_file:
-            all_files.append(trends_file)
-        if keywords_file:
-            all_files.append(keywords_file)
-        
-        # Criar arquivo de relacionamentos
-        rel_file = create_relationships_file(output_dir)
-        all_files.append(rel_file)
-        
-        # Criar arquivo de metadados
-        metadata_file = create_powerbi_metadata(output_dir)
-        all_files.append(metadata_file)
-        
-        # Manter a funcionalidade original também
-        # Criar o arquivo combinado para referência
-        combined_file = os.path.join(output_dir, f"relatorio_completo_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
-        
-        with open(combined_file, 'w', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            
-            # Seção de palavras-chave
-            writer.writerow(["SEÇÃO: TOP PALAVRAS-CHAVE DE MODA"])
-            writer.writerow(["Palavra", "Contagem", "Ranking"])
-            for i, keyword in enumerate(top_keywords, 1):
-                writer.writerow([keyword["palavra"], keyword["contagem"], i])
-            
-            # Linha em branco entre seções
-            writer.writerow([])
-            writer.writerow([])
-            
-            # Seção de tendências
-            writer.writerow(["SEÇÃO: TENDÊNCIAS DE MODA"])
-            if trend_data:
-                headers = trend_data[0].keys()
-                writer.writerow(headers)
-                for trend in trend_data:
-                    writer.writerow(trend.values())
-        
-        all_files.append(combined_file)
-        
-        print("\n=== ARQUIVOS PREPARADOS PARA POWER BI ===")
-        for file in all_files:
-            print(f"✓ {file}")
-        
-        print(f"\nTodos os arquivos foram salvos no diretório: {os.path.abspath(output_dir)}")
-        print("\nInstruções para importar no Power BI:")
-        print("1. Abra o Power BI Desktop")
-        print("2. Clique em 'Obter dados' > 'Texto/CSV'")
-        print("3. Selecione os arquivos CSV gerados")
-        print("4. Siga as instruções no arquivo de metadados para configuração")
-        
-        return output_dir, all_files
-        
-    except Exception as e:
-        print(f"Erro ao processar dados para Power BI: {str(e)}")
-        return None, []
-
-# Manter as funções originais do seu código
-def save_to_csv(trend_data, top_keywords, filename=None):
-    # [Seu código original da função]
-    if not trend_data and not top_keywords:
-        print("Nenhum dado para salvar")
-        return None, None
-    
-    if filename is None:
-        current_date = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_filename = f"moda_{current_date}"
-    else:
-        base_filename = filename
-    
-    trends_file = f"{base_filename}_tendencias.csv"
-    keywords_file = f"{base_filename}_top_keywords.csv"
-    
-    # Salvar dados de tendências
-    if trend_data:
-        # Determinar os cabeçalhos com base no primeiro item
-        headers = trend_data[0].keys()
-        
-        print(f"Salvando {len(trend_data)} resultados de tendências em {trends_file}...")
-        
-        with open(trends_file, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=headers)
-            writer.writeheader()
-            writer.writerows(trend_data)
-    
-    # Salvar dados de palavras-chave
-    if top_keywords:
-        print(f"Salvando {len(top_keywords)} palavras-chave mais pesquisadas em {keywords_file}...")
-        
-        with open(keywords_file, 'w', newline='', encoding='utf-8') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=["palavra", "contagem"])
-            writer.writeheader()
-            writer.writerows(top_keywords)
-    
-    return trends_file, keywords_file
-
-def run_fashion_research(api_key, filename=None, num_results=30, num_keywords=10):
-    # [Seu código original da função]
-    try:
-        # Obter dados de tendências
-        trend_data = search_fashion_trends(api_key, num_results)
-        
-        # Obter top palavras-chave
-        top_keywords = get_top_fashion_keywords(api_key, num_keywords)
-        
-        if not trend_data and not top_keywords:
-            print("Não foi possível obter dados sobre moda")
-            return None, None
-        
-        # Salvar dados
-        trends_file, keywords_file = save_to_csv(trend_data, top_keywords, filename)
+        if top_keywords:
+            keywords_count = insert_fashion_keywords(connection, top_keywords)
         
         # Exibir resumo dos resultados
         print("\n=== RESUMO DA PESQUISA DE MODA ===")
         
-        if trends_file:
-            print(f"✓ Tendências de moda salvas em: {trends_file}")
+        if trends_count > 0:
+            print(f"✓ {trends_count} tendências de moda armazenadas no MySQL")
         else:
             print("✗ Não foi possível obter tendências de moda")
         
-        if keywords_file:
-            print(f"✓ Top {num_keywords} palavras-chave salvas em: {keywords_file}")
+        if keywords_count > 0:
+            print(f"✓ {keywords_count} palavras-chave armazenadas no MySQL")
             print("\nTop 10 palavras-chave relacionadas à moda:")
             for i, keyword in enumerate(top_keywords[:10], 1):
                 print(f"{i}. {keyword['palavra']} ({keyword['contagem']} ocorrências)")
         else:
             print("✗ Não foi possível obter palavras-chave de moda")
         
-        return trends_file, keywords_file
+        # Fechar a conexão
+        connection.close()
+        
+        return trends_count, keywords_count
     
     except Exception as e:
         print(f"Erro ao processar: {str(e)}")
-        return None, None
+        return 0, 0
 
-def combine_results_csv(trends_file, keywords_file, output_file=None):
-    # [Seu código original da função]
-    if not trends_file or not keywords_file:
-        print("Arquivos insuficientes para combinar")
-        return None
+# Função para configurar e executar em intervalos regulares
+def schedule_fashion_research(api_key, mysql_config, interval_hours=24):
+    """
+    Configura a execução da pesquisa de moda em intervalos regulares
     
-    if output_file is None:
-        current_date = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = f"relatorio_moda_completo_{current_date}.csv"
-    
-    print(f"Combinando resultados em {output_file}...")
-    
-    # Ler dados de tendências
-    trends_data = []
-    with open(trends_file, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        trends_data = list(reader)
-    
-    # Ler dados de palavras-chave
-    keywords_data = []
-    with open(keywords_file, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        keywords_data = list(reader)
-    
-    # Criar um único CSV com duas seções
-    with open(output_file, 'w', newline='', encoding='utf-8') as f:
-        writer = csv.writer(f)
+    Args:
+        api_key (str): Sua chave de API da SerpAPI
+        mysql_config (dict): Configurações de conexão com o MySQL
+        interval_hours (int): Intervalo em horas entre as execuções
         
-        # Seção de palavras-chave
-        writer.writerow(["SEÇÃO: TOP PALAVRAS-CHAVE DE MODA"])
-        writer.writerow(["Palavra", "Contagem"])
-        for keyword in keywords_data:
-            writer.writerow([keyword["palavra"], keyword["contagem"]])
-        
-        # Linha em branco entre seções
-        writer.writerow([])
-        writer.writerow([])
-        
-        # Seção de tendências
-        writer.writerow(["SEÇÃO: TENDÊNCIAS DE MODA"])
-        if trends_data:
-            headers = trends_data[0].keys()
-            writer.writerow(headers)
-            for trend in trends_data:
-                writer.writerow(trend.values())
+    Returns:
+        None
+    """
+    import time
     
-    print(f"Arquivo combinado salvo como {output_file}")
-    return output_file
+    print(f"Configurando pesquisa de moda para executar a cada {interval_hours} horas")
+    
+    try:
+        while True:
+            # Executar a pesquisa
+            print(f"\n[{datetime.now()}] Iniciando pesquisa de moda...")
+            run_fashion_research_with_mysql(api_key, mysql_config)
+            
+            # Aguardar o intervalo
+            print(f"\nAguardando {interval_hours} horas até a próxima execução...")
+            time.sleep(interval_hours * 3600)  # Converter horas para segundos
+    
+    except KeyboardInterrupt:
+        print("\nPesquisa interrompida pelo usuário.")
+    
+    except Exception as e:
+        print(f"\nErro durante a execução programada: {str(e)}")
 
 if __name__ == "__main__":
-    # Substitua com sua chave de API real da SerpAPI
+    # Configurações MySQL
+    mysql_config = {
+        'host': '127.0.0.1',  # Altere para o host do seu servidor MySQL
+        'user': 'root',       # Altere para seu usuário MySQL
+        'password': '1234',  # Altere para sua senha MySQL
+        'database': 'fashion_trends_db'  # Nome do banco de dados (deve existir)
+    }
+    
+    # Sua chave de API SerpAPI
     API_KEY = "711715b0dfcaae2c9a68f87fefa693140450e46c7c00f64ac0b3ed9f05a6e6b0"
     
-    # Opção 1: Executar o código original que você já estava usando
-    # trends_file, keywords_file = run_fashion_research(API_KEY)
-    # if trends_file and keywords_file:
-    #     combined_file = combine_results_csv(trends_file, keywords_file)
+    # Opção 1: Executar uma única vez
+    run_fashion_research_with_mysql(API_KEY, mysql_config)
     
-    # Opção 2: Executar a nova funcionalidade para preparar os dados para o Power BI
-    output_dir, created_files = prepare_data_for_powerbi(API_KEY)
+    # Opção 2: Executar em intervalos regulares (a cada 24 horas)
+    # Descomente a linha abaixo para ativar o agendamento
+    # schedule_fashion_research(API_KEY, mysql_config, interval_hours=24)

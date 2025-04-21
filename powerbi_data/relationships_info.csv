@@ -1,0 +1,2 @@
+from_table,from_column,to_table,to_column,relationship
+fashion_trends,data_coleta,fashion_keywords,data_coleta,many_to_many

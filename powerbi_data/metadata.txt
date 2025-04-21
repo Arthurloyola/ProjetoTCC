@@ -1,0 +1,33 @@
+# Metadados para importação no Power BI
+
+## Estrutura das tabelas
+
+### Tabela: fashion_trends
+- id: Identificador único da tendência
+- título: Título da tendência encontrada
+- link: URL da fonte
+- snippet: Trecho de texto descritivo
+- data: Data da tendência (se disponível)
+- fonte: Fonte da informação (apenas para resultados de notícias)
+- data_coleta: Data em que os dados foram coletados
+
+### Tabela: fashion_keywords
+- id: Identificador único da palavra-chave
+- palavra: A palavra-chave de moda
+- contagem: Número de vezes que a palavra apareceu nas sugestões de pesquisa
+- ranking: Posição no ranking de popularidade
+- data_coleta: Data em que os dados foram coletados
+
+## Sugestões de visualizações
+
+1. Nuvem de palavras com as palavras-chave mais populares
+2. Gráfico de barras mostrando as contagens das top 10 palavras-chave
+3. Linha do tempo com as tendências organizadas por data
+4. Mapa de calor relacionando palavras-chave e temas das tendências
+5. Cartões com métricas principais (número de tendências, palavra-chave mais comum)
+
+## Atualização dos dados
+
+- Os dados são baseados em pesquisas realizadas através da SerpAPI
+- Atualize regularmente para acompanhar mudanças nas tendências
+- A coluna data_coleta permite acompanhar a evolução das tendências ao longo do tempo
