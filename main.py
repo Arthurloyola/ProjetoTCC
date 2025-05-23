@@ -51,11 +51,11 @@ def create_mysql_tables(connection):
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS fashion_trends (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            title VARCHAR(255),
-            link TEXT,
-            snippet TEXT,
-            source_date VARCHAR(255),
-            source VARCHAR(255),
+            title VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+            link TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+            snippet TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+            source_date VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+            source VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
             collection_date DATETIME
         )
         """)
@@ -64,7 +64,7 @@ def create_mysql_tables(connection):
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS fashion_keywords (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            keyword VARCHAR(255),
+            keyword VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
             count INT,
             ranking INT,
             collection_date DATETIME
@@ -165,10 +165,10 @@ def insert_fashion_keywords(connection, top_keywords):
         print(f"Erro ao inserir palavras-chave no MySQL: {err}")
         return 0
 
-# Funções existentes mantidas do seu código original
+# Função modificada para buscar especificamente sites brasileiros
 def search_fashion_trends(api_key, num_results=30):
     """
-    Busca tendências de moda usando a SerpAPI e retorna os resultados
+    Busca tendências de moda em sites brasileiros usando a SerpAPI
     
     Args:
         api_key (str): Sua chave de API da SerpAPI
@@ -179,38 +179,137 @@ def search_fashion_trends(api_key, num_results=30):
     """
     base_url = "https://serpapi.com/search"
     
-    # Parâmetros para a busca
-    params = {
-        "q": "fashion trends 2025",
+    # Sites brasileiros de moda conhecidos
+    brazilian_fashion_sites = [
+        "site:vogue.globo.com",
+        "site:elle.com.br", 
+        "site:marieclaire.globo.com",
+        "site:glamour.globo.com",
+        "site:harpersbazaar.com.br",
+        "site:ffwmag.com",
+        "site:capricho.abril.com.br",
+        "site:blogjuliapepper.com",
+        "site:garotasestupidas.com",
+        "site:trendstyle.com.br"
+    ]
+    
+    # Múltiplas buscas com termos em português focando em sites brasileiros
+    search_queries = [
+        "tendências de moda 2025 Brasil",
+        "moda feminina tendências brasileira",
+        "fashion week São Paulo tendências",
+        "moda sustentável Brasil 2025",
+        "street style brasileiro moda",
+        "marcas brasileiras moda tendências"
+    ]
+    
+    all_results = []
+    
+    # Busca 1: Sites específicos brasileiros
+    for site in brazilian_fashion_sites:
+        for base_query in ["tendências moda 2025", "moda feminina 2025"]:
+            query = f"{base_query} {site}"
+            
+            params = {
+                "q": query,
+                "api_key": api_key,
+                "engine": "google",
+                "gl": "br",
+                "hl": "pt-br",
+                "num": 5,
+                "cr": "countryBR",  # Restringir ao Brasil
+                "lr": "lang_pt"
+            }
+            
+            print(f"Buscando em: {site}")
+            response = requests.get(base_url, params=params)
+            
+            if response.status_code == 200:
+                data = response.json()
+                all_results.extend(extract_results_from_response(data))
+    
+    # Busca 2: Termos gerais com filtro para sites .com.br
+    for query in search_queries:
+        enhanced_query = f'{query} site:.com.br OR site:.br'
+        
+        params = {
+            "q": enhanced_query,
+            "api_key": api_key,
+            "engine": "google",
+            "gl": "br",
+            "hl": "pt-br",
+            "num": 10,
+            "cr": "countryBR",
+            "lr": "lang_pt"
+        }
+        
+        print(f"Buscando: {query}")
+        response = requests.get(base_url, params=params)
+        
+        if response.status_code == 200:
+            data = response.json()
+            all_results.extend(extract_results_from_response(data))
+    
+    # Busca 3: Google News Brasil para tendências recentes
+    news_params = {
+        "q": "tendências moda Brasil 2025",
         "api_key": api_key,
-        "engine": "google",
+        "engine": "google_news",
         "gl": "br",
         "hl": "pt-br",
-        "num": num_results
+        "num": 15
     }
     
-    print("Buscando tendências de moda...")
-    response = requests.get(base_url, params=params)
+    print("Buscando notícias de moda brasileira...")
+    news_response = requests.get(base_url, params=news_params)
     
-    if response.status_code != 200:
-        print(f"Erro na requisição: {response.status_code}")
-        return []
+    if news_response.status_code == 200:
+        news_data = news_response.json()
+        if "news_results" in news_data:
+            for item in news_data["news_results"]:
+                trend_data = {
+                    "título": item.get("title", ""),
+                    "link": item.get("link", ""),
+                    "snippet": item.get("snippet", ""),
+                    "data": item.get("date", ""),
+                    "fonte": item.get("source", "")
+                }
+                all_results.append(trend_data)
     
-    data = response.json()
+    # Filtrar apenas sites brasileiros
+    brazilian_results = filter_brazilian_sites(all_results)
+    
+    # Remover duplicatas baseado no título
+    unique_results = []
+    seen_titles = set()
+    
+    for result in brazilian_results:
+        title_clean = result["título"].lower().strip()
+        if title_clean not in seen_titles and title_clean and len(title_clean) > 10:
+            seen_titles.add(title_clean)
+            unique_results.append(result)
+    
+    return unique_results[:num_results]
+
+def extract_results_from_response(data):
+    """
+    Extrai resultados de uma resposta da API
+    """
+    results = []
     
     # Extrair resultados orgânicos
-    results = []
     if "organic_results" in data:
         for item in data["organic_results"]:
             trend_data = {
                 "título": item.get("title", ""),
                 "link": item.get("link", ""),
                 "snippet": item.get("snippet", ""),
-                "data": item.get("date", "")
+                "data": item.get("date", ""),
+                "fonte": extract_domain(item.get("link", ""))
             }
             results.append(trend_data)
     
-    # Extrair resultados de notícias se disponíveis
+    # Extrair resultados de notícias
     if "news_results" in data:
         for item in data["news_results"]:
             trend_data = {
@@ -224,9 +323,68 @@ def search_fashion_trends(api_key, num_results=30):
     
     return results
 
+def filter_brazilian_sites(results):
+    """
+    Filtra resultados para manter apenas sites brasileiros
+    """
+    # Domínios brasileiros conhecidos
+    brazilian_domains = [
+        '.com.br', '.br', 'globo.com', 'abril.com.br', 
+        'vogue.globo.com', 'elle.com.br', 'marieclaire.globo.com',
+        'glamour.globo.com', 'harpersbazaar.com.br', 'ffwmag.com',
+        'capricho.abril.com.br', 'uol.com.br', 'g1.globo.com',
+        'folha.uol.com.br', 'estadao.com.br', 'ig.com.br',
+        'r7.com', 'terra.com.br', 'yahoo.com.br'
+    ]
+    
+    # Sites de moda brasileiros específicos
+    fashion_sites_br = [
+        'blogjuliapepper.com', 'garotasestupidas.com', 'trendstyle.com.br',
+        'fashionbubbles.com', 'justlia.com.br', 'blogdamariah.com.br',
+        'vilamulher.com.br', 'delas.ig.com.br', 'mdemulher.abril.com.br'
+    ]
+    
+    filtered_results = []
+    
+    for result in results:
+        link = result.get("link", "").lower()
+        fonte = result.get("fonte", "").lower()
+        
+        # Verificar se é um site brasileiro
+        is_brazilian = False
+        
+        # Verificar domínios brasileiros
+        for domain in brazilian_domains:
+            if domain in link or domain in fonte:
+                is_brazilian = True
+                break
+        
+        # Verificar sites específicos de moda brasileira
+        for site in fashion_sites_br:
+            if site in link or site in fonte:
+                is_brazilian = True
+                break
+        
+        if is_brazilian:
+            filtered_results.append(result)
+    
+    return filtered_results
+
+def extract_domain(url):
+    """
+    Extrai o domínio de uma URL
+    """
+    try:
+        import urllib.parse
+        parsed = urllib.parse.urlparse(url)
+        return parsed.netloc
+    except:
+        return ""
+
+# Função modificada para palavras-chave de sites brasileiros
 def get_top_fashion_keywords(api_key, num_keywords=10):
     """
-    Obtém as palavras-chave mais pesquisadas relacionadas à moda
+    Obtém as palavras-chave mais pesquisadas relacionadas à moda brasileira
     usando a API de sugestões de pesquisa do Google via SerpAPI
     
     Args:
@@ -236,66 +394,82 @@ def get_top_fashion_keywords(api_key, num_keywords=10):
     Returns:
         list: Lista das top palavras-chave mais pesquisadas
     """
-    print("Buscando top palavras-chave de moda...")
+    print("Buscando top palavras-chave de moda brasileira...")
     
-    # Primeira busca - termos relacionados a "fashion trends"
-    params_trends = {
-        "q": "fashion trends",
-        "api_key": api_key,
-        "engine": "google_autocomplete"
-    }
+    # Termos base focados no Brasil
+    base_terms = [
+        "moda brasileira tendências",
+        "fashion week são paulo",
+        "marcas brasileiras moda", 
+        "estilistas brasileiros",
+        "moda sustentável brasil",
+        "street style brasileiro",
+        "moda praia brasileira",
+        "moda festa junina",
+        "carnaval moda brasil"
+    ]
     
-    response_trends = requests.get("https://serpapi.com/search", params=params_trends)
+    all_keywords = []
     
-    # Segunda busca - termos relacionados a "fashion"
-    params_fashion = {
-        "q": "fashion",
-        "api_key": api_key,
-        "engine": "google_autocomplete"
-    }
+    for term in base_terms:
+        # Buscar sugestões com foco no Brasil
+        params = {
+            "q": term,
+            "api_key": api_key,
+            "engine": "google_autocomplete",
+            "gl": "br",
+            "hl": "pt-br"
+        }
+        
+        response = requests.get("https://serpapi.com/search", params=params)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if "suggestions" in data:
+                for suggestion in data["suggestions"]:
+                    keyword = suggestion.get("value", "")
+                    if keyword and any(word in keyword.lower() for word in ["brasil", "brasileiro", "brasileira", "são paulo", "rio", "moda"]):
+                        all_keywords.append(keyword)
     
-    response_fashion = requests.get("https://serpapi.com/search", params=params_fashion)
+    # Buscar também termos relacionados em sites brasileiros
+    site_specific_terms = [
+        "vogue brasil moda",
+        "elle brasil tendências",
+        "marie claire brasil fashion"
+    ]
     
-    # Terceira busca - termos relacionados a "fashion 2025"
-    params_2025 = {
-        "q": "fashion 2025",
-        "api_key": api_key,
-        "engine": "google_autocomplete"
-    }
+    for term in site_specific_terms:
+        params = {
+            "q": term,
+            "api_key": api_key,
+            "engine": "google_autocomplete",
+            "gl": "br",
+            "hl": "pt-br"
+        }
+        
+        response = requests.get("https://serpapi.com/search", params=params)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if "suggestions" in data:
+                for suggestion in data["suggestions"]:
+                    keyword = suggestion.get("value", "")
+                    if keyword:
+                        all_keywords.append(keyword)
     
-    response_2025 = requests.get("https://serpapi.com/search", params=params_2025)
-    
-    keywords = []
-    
-    # Processar resultados da primeira busca
-    if response_trends.status_code == 200:
-        data = response_trends.json()
-        if "suggestions" in data:
-            for suggestion in data["suggestions"]:
-                keywords.append(suggestion.get("value", ""))
-    
-    # Processar resultados da segunda busca
-    if response_fashion.status_code == 200:
-        data = response_fashion.json()
-        if "suggestions" in data:
-            for suggestion in data["suggestions"]:
-                keywords.append(suggestion.get("value", ""))
-    
-    # Processar resultados da terceira busca
-    if response_2025.status_code == 200:
-        data = response_2025.json()
-        if "suggestions" in data:
-            for suggestion in data["suggestions"]:
-                keywords.append(suggestion.get("value", ""))
-    
-    # Contar ocorrência de palavras significativas nas keywords
+    # Processar e extrair palavras significativas em português
     all_words = []
-    for keyword in keywords:
-        # Limpar e extrair palavras significativas (ignorar palavras comuns como "the", "and", etc)
-        words = re.findall(r'\b[a-zA-Z]{3,}\b', keyword.lower())
-        # Filtrar palavras muito comuns
-        stopwords = ["the", "and", "for", "with", "what", "how", "are", "can", "from", "fashion"]
-        filtered_words = [word for word in words if word not in stopwords]
+    for keyword in all_keywords:
+        # Limpar e extrair palavras significativas
+        words = re.findall(r'\b[a-zA-ZÀ-ÿ]{3,}\b', keyword.lower())
+        # Filtrar palavras muito comuns em português
+        stopwords = [
+            "para", "com", "que", "uma", "das", "dos", "como", "onde", 
+            "quando", "qual", "quais", "são", "tem", "ter", "mais", 
+            "muito", "pela", "pelo", "por", "anos", "ano", "brasil",
+            "the", "and", "for", "with", "what", "how", "moda", "fashion"
+        ]
+        filtered_words = [word for word in words if word not in stopwords and len(word) > 3]
         all_words.extend(filtered_words)
     
     # Contar e obter as top palavras-chave
@@ -307,7 +481,7 @@ def get_top_fashion_keywords(api_key, num_keywords=10):
     
     return top_keywords
 
-# Nova função principal com integração MySQL
+# Função principal com integração MySQL (mantida igual)
 def run_fashion_research_with_mysql(api_key, mysql_config, num_results=30, num_keywords=10):
     """
     Função principal que executa a pesquisa de moda e armazena os resultados no MySQL
@@ -361,6 +535,12 @@ def run_fashion_research_with_mysql(api_key, mysql_config, num_results=30, num_k
         
         if trends_count > 0:
             print(f"✓ {trends_count} tendências de moda armazenadas no MySQL")
+            print("\nPrimeiras 5 tendências encontradas:")
+            for i, trend in enumerate(trend_data[:5], 1):
+                print(f"{i}. {trend['título']}")
+                print(f"   Fonte: {trend['fonte']}")
+                print(f"   Link: {trend['link'][:60]}...")
+                print("")
         else:
             print("✗ Não foi possível obter tendências de moda")
         
@@ -381,7 +561,7 @@ def run_fashion_research_with_mysql(api_key, mysql_config, num_results=30, num_k
         print(f"Erro ao processar: {str(e)}")
         return 0, 0
 
-# Função para configurar e executar em intervalos regulares
+# Função para configurar e executar em intervalos regulares (mantida igual)
 def schedule_fashion_research(api_key, mysql_config, interval_hours=24):
     """
     Configura a execução da pesquisa de moda em intervalos regulares
