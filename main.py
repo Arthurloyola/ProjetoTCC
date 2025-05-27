@@ -189,7 +189,7 @@ def search_fashion_trends(api_key, num_results=30):
     if "organic_results" in data:
         for item in data["organic_results"]:
             trend_data = {
-                "título": item.get("title", ""),
+                "título": item.get("title", ""), 
                 "link": item.get("link", ""),
                 "snippet": item.get("snippet", ""),
                 "data": item.get("date", "")
@@ -359,3 +359,5 @@ if __name__ == "__main__":
 
     run_fashion_research_with_mysql(API_KEY, mysql_config)
     # schedule_fashion_research(API_KEY, mysql_config, interval_hours=24)
+
+    #
