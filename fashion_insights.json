@@ -1,0 +1,254 @@
+{
+  "trending_hashtags": [
+    [
+      "moda",
+      45
+    ],
+    [
+      "fashion",
+      38
+    ],
+    [
+      "style",
+      32
+    ],
+    [
+      "lookdodia",
+      28
+    ],
+    [
+      "outfit",
+      25
+    ],
+    [
+      "modafeminina",
+      22
+    ],
+    [
+      "vestido",
+      20
+    ],
+    [
+      "jeans",
+      18
+    ],
+    [
+      "tendencia",
+      16
+    ],
+    [
+      "estilo",
+      15
+    ],
+    [
+      "blusa",
+      14
+    ],
+    [
+      "sapatos",
+      12
+    ],
+    [
+      "acessorios",
+      11
+    ],
+    [
+      "fashionista",
+      10
+    ],
+    [
+      "streetstyle",
+      9
+    ],
+    [
+      "modamasculina",
+      8
+    ],
+    [
+      "bolsa",
+      7
+    ],
+    [
+      "casaco",
+      6
+    ],
+    [
+      "formal",
+      5
+    ],
+    [
+      "casual",
+      4
+    ]
+  ],
+  "trending_keywords": [
+    [
+      "vestido",
+      25
+    ],
+    [
+      "jeans",
+      22
+    ],
+    [
+      "blusa",
+      20
+    ],
+    [
+      "sapatos",
+      18
+    ],
+    [
+      "bolsa",
+      15
+    ],
+    [
+      "casual",
+      14
+    ],
+    [
+      "estilo",
+      12
+    ],
+    [
+      "verão",
+      11
+    ],
+    [
+      "elegante",
+      10
+    ],
+    [
+      "conforto",
+      9
+    ],
+    [
+      "formal",
+      8
+    ],
+    [
+      "festa",
+      7
+    ],
+    [
+      "trabalho",
+      6
+    ],
+    [
+      "tênis",
+      5
+    ],
+    [
+      "inverno",
+      4
+    ]
+  ],
+  "engagement_analysis": {
+    "avg_likes": 147.5,
+    "avg_comments": 23.2,
+    "avg_engagement": 170.7,
+    "engagement_by_hashtag_count": {
+      "5": 125.4,
+      "8": 167.8,
+      "10": 189.3,
+      "15": 156.2
+    },
+    "engagement_by_caption_length": {
+      "short_captions": 134.2,
+      "medium_captions": 178.9,
+      "long_captions": 145.6
+    }
+  },
+  "posting_time_analysis": [
+    [
+      19,
+      12
+    ],
+    [
+      20,
+      10
+    ],
+    [
+      18,
+      9
+    ],
+    [
+      21,
+      8
+    ],
+    [
+      17,
+      7
+    ],
+    [
+      12,
+      6
+    ],
+    [
+      15,
+      5
+    ],
+    [
+      14,
+      4
+    ],
+    [
+      16,
+      3
+    ],
+    [
+      13,
+      2
+    ]
+  ],
+  "fashion_hashtag_performance": [
+    {
+      "hashtag": "moda",
+      "avg_engagement": 165.4,
+      "usage_count": 50
+    },
+    {
+      "hashtag": "fashion",
+      "avg_engagement": 158.7,
+      "usage_count": 45
+    },
+    {
+      "hashtag": "style",
+      "avg_engagement": 142.3,
+      "usage_count": 40
+    },
+    {
+      "hashtag": "lookdodia",
+      "avg_engagement": 134.8,
+      "usage_count": 35
+    },
+    {
+      "hashtag": "outfit",
+      "avg_engagement": 128.9,
+      "usage_count": 30
+    }
+  ],
+  "content_insights": {
+    "recommendations": [
+      "Posts com 8-10 hashtags têm melhor engajamento",
+      "Legendas médias (100-300 caracteres) performam melhor",
+      "Postar entre 18h-21h gera mais interações",
+      "Combinar hashtags em português e inglês aumenta alcance"
+    ],
+    "best_hashtag_count": 8,
+    "optimal_caption_strategy": "médias"
+  },
+  "summary_stats": {
+    "total_posts_analyzed": 50,
+    "unique_hashtags": 156,
+    "unique_keywords": 89,
+    "analysis_date": "2025-05-28 10:44:51",
+    "data_source": "sample_data",
+    "account_info": {
+      "username": "exemplo_conta",
+      "account_type": "BUSINESS",
+      "media_count": 100,
+      "followers_count": 10000
+    }
+  }
+}
