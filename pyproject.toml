@@ -1,0 +1,22 @@
+[project]
+name = "projetotcc"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "arthurloyolasoares@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "bs4 (>=0.0.2,<0.0.3)",
+    "urllib3 (>=2.5.0,<3.0.0)",
+    "sqlalchemy (>=2.0.41,<3.0.0)",
+    "requests (>=2.32.4,<3.0.0)",
+    "pymysql (>=1.1.1,<2.0.0)",
+    "cryptography (>=45.0.4,<46.0.0)",
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
